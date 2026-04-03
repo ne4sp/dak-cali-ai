@@ -71,10 +71,8 @@ class Line:
         for j in range(len(self.lv) - 1):
             y1, y2 = self.lv[j], self.lv[j + 1]
 
-            # Проверяем, есть ли пересечение с порогом
             if (y1 <= self.level <= y2) or (y2 <= self.level <= y1):
-                # Линейная интерполяция для нахождения x координаты пересечения
-                if y2 != y1:  # Избегаем деления на ноль
+                if y2 != y1:
                     t = (self.level - y1) / (y2 - y1)
                     self.level_intersection = j + t
                     return
@@ -88,7 +86,6 @@ class Line:
         weights_window = slopes[start_index:end_index]
         pixel_indices = np.arange(start_index, end_index) + 0.5
 
-        # Защита от деления на ноль, если все веса равны 0
         sum_weights = np.sum(np.abs(weights_window))
         if sum_weights == 0:
             self.acs_px = float(max_slope_index + 0.5)
@@ -112,7 +109,7 @@ class Line:
 
     def execute_data(self):
         return [
-            [self.o_level_intersection, self.o_acs_px, self.k],
+            [self.o_level_intersection],
             [self.conc]
         ]
 

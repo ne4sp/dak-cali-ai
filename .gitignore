@@ -1,0 +1,9 @@
+.venv
+.idea
+__pycache__
+bin
+math-ai.cpp
+math-ai.docx
+math-ai.pdf
+math-ai.zip
+png_results.zip
