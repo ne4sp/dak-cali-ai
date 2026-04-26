@@ -1,62 +1,41 @@
-import numpy as np
-from sklearn.model_selection import train_test_split
-from catboost import CatBoostRegressor
-from sklearn.metrics import mean_squared_error
-from DatasetGenerator import generate, Train
-import matplotlib.pyplot as plt
+"""Запуск из корня проекта: python main.py"""
 
-fulldata = generate()
+from pathlib import Path
 
-X = [data[0] for data in fulldata]
-Y = [data[1] for data in fulldata]
+import pandas as pd
 
-X_train, X_test, Y_train, Y_test = train_test_split(
-    X, Y, test_size=0.1, random_state=42
+from analysis import (
+    history_comparison_df,
+    load_training_data,
+    print_cli_report,
+    train_model,
 )
+from calibration_io import DEFAULT_LEVELS_TEXT, parse_levels_text
+
+DEFAULT_REF = Path(__file__).resolve().parent / "dak" / "train.log"
+DEFAULT_HIST = Path(__file__).resolve().parent / "dak" / "conc_history_2025-10-14.log"
 
 
-model = CatBoostRegressor(
-    iterations=600,
-    learning_rate=0.1,
-    loss_function='RMSE',
-    random_seed=42,
-)
+def main():
+    levels = parse_levels_text(DEFAULT_LEVELS_TEXT)
+    print("Загрузка датасета из trains/…", f"уровни: {levels}")
+    X, Y = load_training_data(levels=levels)
+    print("Начало обучения CatBoost…")
+    model, metrics, _ = train_model(X, Y, verbose=True)
+    print("Обучение завершено.")
+
+    if not DEFAULT_REF.is_file() or not DEFAULT_HIST.is_file():
+        print(
+            f"Предупреждение: нет файлов сравнения ({DEFAULT_REF.name} / {DEFAULT_HIST.name})."
+        )
+        print_cli_report(metrics, pd.DataFrame())
+        return
+
+    df = history_comparison_df(
+        model, str(DEFAULT_REF), str(DEFAULT_HIST), levels=levels
+    )
+    print_cli_report(metrics, df)
 
 
-print("Начало обучения CatBoost...")
-model.fit(X_train, Y_train)
-print("Обучение завершено.")
-
-Y_pred = model.predict(X_test)
-mse = mean_squared_error(Y_test, Y_pred)
-rmse = np.sqrt(mse)
-
-
-
-
-train = Train('dak/train.log')
-log = Train('dak/conc_history_2025-10-14.log')
-
-COL_WIDTH = 10
-
-# Вывод заголовков столбцов
-print(f"{'REAL':^{COL_WIDTH}} | {'AI':^{COL_WIDTH}}")
-print("-" * (2 * COL_WIDTH + 3))  # Разделительная линия
-
-for line in log.lines:
-    line.to_compare = train.lines[0]
-    line.create_o()
-
-real = 0
-counter = 0
-ai = 0
-
-for line in log.lines:
-    print(round(line.conc, 2), '-', abs(round(model.predict(line.execute_data()[0]), 2)))
-    counter += 1
-    real += round(line.conc, 1)
-    ai += abs(round(model.predict(line.execute_data()[0]), 1))
-print('avg ai = ', ai/counter)
-print('avg real = ', real/counter)
-
-
+if __name__ == "__main__":
+    main()
